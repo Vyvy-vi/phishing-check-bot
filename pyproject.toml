@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "phishing-check-bot"
+version = "0.1.0"
+description = "Whatsapp bot for checking phishing links and for education about phishing."
+authors = ["Vyvy-vi <vyom.j@protonmail.com>"]
+license = "BSD-3-Clause"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+twilio = "^7.8.1"
+Flask = "^2.1.1"
+requests = "^2.27.1"
+pytest = "^7.1.1"
+python-dotenv = "^0.20.0"
+
+[tool.poetry.dev-dependencies]
+isort = "^5.10.1"
+taskipy = "^1.10.1"
+flake8 = "^4.0.1"
+black = "^22.3.0"
+pytest = "^7.1.1"
+pre-commit = "^2.18.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
