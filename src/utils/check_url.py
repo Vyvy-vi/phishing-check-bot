@@ -1,33 +1,62 @@
 import requests
 import os
-import json
 from dotenv import load_dotenv
+from typing import List
+from pysafebrowsing import SafeBrowsing
 
 load_dotenv()
 
+# Google Safe Browsing
 SAFE_BROWSING_API_KEY = os.getenv("GCP_API_KEY")
-url = f"https://safebrowsing.googleapis.com/v4/threatMatches:find?key={SAFE_BROWSING_API_KEY}"
-headers = {"content-type": "application/json"}
+sb_api = SafeBrowsing(SAFE_BROWSING_API_KEY)
+
+# NoPhishy (Exerra)
+EXERRA_RAPIDAPI_KEY = os.getenv("EXERRA_RAPIDAPI_KEY")
+exerra_api_url = "https://exerra-phishing-check.p.rapidapi.com/"
+querystring = {"url": "https://exerra.xyz"}
+
+headers = {
+    "X-RapidAPI-Host": "exerra-phishing-check.p.rapidapi.com",
+    "X-RapidAPI-Key": EXERRA_RAPIDAPI_KEY,
+}
 
 
-def check_url(target_url):
+def check_url(target_url: str):
     if not target_url:
         return {"error": "No url argument provided"}
-    payload = {
-        "client": {"clientId": "0xfe12a052bbd9e", "clientVersion": "0.1"},
-        "threatInfo": {
-            "threatTypes": [
-                "SOCIAL_ENGINEERING",
-                "MALWARE",
-                "POTENTIALLY_HARMFUL_APPLICATION",
-            ],
-            "platformTypes": ["ANY_PLATFORM"],
-            "threatEntryTypes": ["URL"],
-        },
-    }
-    payload["threatInfo"]["threatEntries"] = [{"url": target_url}]
-    r = requests.post(url, headers=headers, json=payload)
-    print(r.json())
+    res = {target_url: {}}
+    sb_res = sb_api.lookup_urls([target_url])
+    domain = list(sb_res.keys())[0]
+    res[target_url]["safebrowsing_flag"] = sb_res[domain]["malicious"]
+
+    exerra_res = requests.request(
+        "GET", exerra_api_url, headers=headers, params={"url": target_url}
+    )
+    if exerra_res.status_code == 200:
+        res[target_url]["exerra_phishing_flag"] = exerra_res.json()["isScam"]
+    return res
 
 
-check_url("https://github.com")
+def check_urls(target_urls: List[str]):
+    if not (target_urls and len(target_urls)):
+        return {"error": "No url argument provided"}
+    res = {}
+    sb_res = sb_api.lookup_urls(target_urls)
+    for url in sb_res:
+        res[url] = {}
+        res[url]["safebrowsing_flag"] = sb_res[url]["malicious"]
+    for url in target_urls:
+        exerra_res = requests.request(
+            "GET", exerra_api_url, headers=headers, params={"url": url}
+        )
+        if exerra_res.status_code == 200:
+            res[url]["exerra_phishing_flag"] = exerra_res.json()["isScam"]
+    return res
+
+
+res = requests.request(
+    "GET", "https://api.exerra.xyz/scam/all", headers=headers, data={}
+)
+
+with open("scam_links.txt", "w+") as f:
+    f.write(res.text)

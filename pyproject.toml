@@ -12,6 +12,7 @@ Flask = "^2.1.1"
 requests = "^2.27.1"
 pytest = "^7.1.1"
 python-dotenv = "^0.20.0"
+pysafebrowsing = "^0.1.2"
 
 [tool.poetry.dev-dependencies]
 isort = "^5.10.1"

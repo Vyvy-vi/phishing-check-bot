@@ -1,7 +1,7 @@
 import re
 
 from utils.messages import WELCOME_MESSAGE
-from utils.check_url import check_url
+from utils.check_url import check_url, check_urls
 
 from flask import Flask, request, url_for, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
@@ -19,7 +19,7 @@ def parse_urls(string: str):
         "|",
         string,
     )
-    normal_urls = re.findall(r"[a-z0-9]*\.[a-z0-9]*", string)
+    normal_urls = re.findall(r"[a-z0-9\-]*\.[a-z0-9]*", string)
     return list(
         set(
             (
@@ -32,7 +32,11 @@ def parse_urls(string: str):
                 if (len(http_urls) != 0)
                 else []
             )
-            + (normal_urls if (len(normal_urls) != 0) else [])
+            + (
+                list(map(lambda el: "http://" + el, normal_urls))
+                if (len(normal_urls) != 0)
+                else []
+            )
         )
     )
 
@@ -55,7 +59,6 @@ def bot():
         msg.body(WELCOME_MESSAGE)
         msg.media(qr_file_url)
     elif incoming_msg.startswith("check "):
-        # return a cat photo
         if incoming_msg == "check" or incoming_msg == "check ":
             msg.body("No URL found...")
         else:
@@ -69,8 +72,23 @@ def bot():
         data = "Unknown Command. No URLs found..."
         if len(urls) != 0:
             data = ""
-            for i, url in enumerate(urls):
-                data = data + f"#{i} - {url}\n"
+            if len(urls) == 1:
+                status = check_url(urls[0])
+            else:
+                status = check_urls(urls)
+            for key, value in status.items():
+                if value["safebrowsing_flag"] and value["exerra_phishing_flag"]:
+                    data = f"☠ {data}\n*{key}* - "
+                    data += "This is possibly a PHISHING website.\n*DO NOT OPEN THIS LINK*\n"
+                elif value["safebrowsing_flag"]:
+                    data = f"⚠️ {data}\n*{key}* - "
+                    data += "This is a possibly a malicious website.\n*DO NOT OPEN THIS LINK*\n"
+                elif value["exerra_phishing_flag"]:
+                    data = f"⚠️ {data}\n*{key}* - "
+                    data += "This is possibly a phishing or scam website.\n*BE CAUTIOUS WHEN OPENING THIS LINK. DO NOT ENTER ANY FINANCIAL INFORMATION OR OTP ON THIS WEBSITE*\n"
+                else:
+                    data = f"✅ {data}\n*{key}* - "
+                    data += "This link mostly appears to be safe...\n*YOU CAN OPEN THE LINK SAFELY*\n"
         msg.body(data)
     return str(resp)
 
