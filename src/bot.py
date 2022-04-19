@@ -1,6 +1,7 @@
 import re
+import random
 
-from utils.messages import WELCOME_MESSAGE
+from utils.messages import WELCOME_MESSAGE, TIPS
 from utils.check_url import check_url, check_urls
 
 from flask import Flask, request, url_for, jsonify
@@ -58,6 +59,8 @@ def bot():
         qr_file_url = url_for("static", filename="img/cyberial-anti-phishing.png")
         msg.body(WELCOME_MESSAGE)
         msg.media(qr_file_url)
+    elif incoming_msg.startswith("tips") or incoming_msg.startswith("tip"):
+        msg.body(random.choice(TIPS))
     elif incoming_msg.startswith("check "):
         if incoming_msg == "check" or incoming_msg == "check ":
             msg.body("No URL found...")
@@ -66,7 +69,22 @@ def bot():
             if len(url) == 0:
                 msg.body("No URL found...")
             else:
-                msg.body(url[0])
+                status = check_url(url)
+                data = ""
+                for key, value in status.items():
+                    if value["safebrowsing_flag"] and value["exerra_phishing_flag"]:
+                        data = f"{data}\n☠ *{key}* - "
+                        data += "This is possibly a PHISHING website.\n*DO NOT OPEN THIS LINK*\n"
+                    elif value["safebrowsing_flag"]:
+                        data = f"{data}\n⚠️ *{key}* - "
+                        data += "This is a possibly a malicious website.\n*DO NOT OPEN THIS LINK*\n"
+                    elif value["exerra_phishing_flag"]:
+                        data = f"{data}\n⚠️ *{key}* - "
+                        data += "This is possibly a phishing or scam website.\n*BE CAUTIOUS WHEN OPENING THIS LINK. DO NOT ENTER ANY FINANCIAL INFORMATION OR OTP ON THIS WEBSITE*\n"
+                    else:
+                        data = f"{data}\n✅ *{key}* - "
+                        data += "This link mostly appears to be safe...\n*YOU CAN OPEN THE LINK SAFELY*\n"
+                msg.body(data)
     else:
         urls = parse_urls(incoming_msg)
         data = "Unknown Command. No URLs found..."
@@ -78,16 +96,16 @@ def bot():
                 status = check_urls(urls)
             for key, value in status.items():
                 if value["safebrowsing_flag"] and value["exerra_phishing_flag"]:
-                    data = f"☠ {data}\n*{key}* - "
+                    data = f"{data}\n☠ *{key}* - "
                     data += "This is possibly a PHISHING website.\n*DO NOT OPEN THIS LINK*\n"
                 elif value["safebrowsing_flag"]:
-                    data = f"⚠️ {data}\n*{key}* - "
+                    data = f"{data}\n⚠️ *{key}* - "
                     data += "This is a possibly a malicious website.\n*DO NOT OPEN THIS LINK*\n"
                 elif value["exerra_phishing_flag"]:
-                    data = f"⚠️ {data}\n*{key}* - "
+                    data = f"{data}\n⚠️ *{key}* - "
                     data += "This is possibly a phishing or scam website.\n*BE CAUTIOUS WHEN OPENING THIS LINK. DO NOT ENTER ANY FINANCIAL INFORMATION OR OTP ON THIS WEBSITE*\n"
                 else:
-                    data = f"✅ {data}\n*{key}* - "
+                    data = f"{data}\n✅ *{key}* - "
                     data += "This link mostly appears to be safe...\n*YOU CAN OPEN THE LINK SAFELY*\n"
         msg.body(data)
     return str(resp)
@@ -95,3 +113,4 @@ def bot():
 
 if __name__ == "__main__":
     app.run()
++

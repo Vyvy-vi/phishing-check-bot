@@ -21,9 +21,14 @@ headers = {
 }
 
 
+def unshorten_url(url):
+    return requests.head(url, allow_redirects=True).url
+
+
 def check_url(target_url: str):
     if not target_url:
         return {"error": "No url argument provided"}
+    target_url = unshorten_url(target_url)
     res = {target_url: {}}
     sb_res = sb_api.lookup_urls([target_url])
     domain = list(sb_res.keys())[0]
@@ -40,6 +45,7 @@ def check_url(target_url: str):
 def check_urls(target_urls: List[str]):
     if not (target_urls and len(target_urls)):
         return {"error": "No url argument provided"}
+    target_urls = [unshorten_url(url) for url in target_urls]
     res = {}
     sb_res = sb_api.lookup_urls(target_urls)
     for url in sb_res:
